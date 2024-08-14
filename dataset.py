@@ -15,7 +15,7 @@ class TrainData(Dataset):
     def __init__(self, opt):
         super(TrainData, self).__init__()
 
-        self.files_opt = sorted(glob.glob("%s/opt/*" % opt.train_data_path))
+        self.files_rgb = sorted(glob.glob("%s/rgb/*" % opt.train_data_path))
         self.files_sar = sorted(glob.glob("%s/sar/*" % opt.train_data_path))
        
         self.opt = opt
@@ -23,26 +23,26 @@ class TrainData(Dataset):
 
     def __getitem__(self, index):
 
-        item_opt = imread(self.files_opt[index % len(self.files_opt)])
+        item_rgb = imread(self.files_rgb[index % len(self.files_rgb)])
         item_sar = imread(self.files_sar[index % len(self.files_sar)])
 
         random_numbers = torch.rand(8).numpy() * 2 - 1
-        item_opt_1, gt_tp, flow = self.affine(random_numbers=random_numbers, imgs=[item_opt], padding_modes=['zeros'], opt=self.opt)
-        item_sar_1, gt_tp, flow = self.affine(random_numbers=random_numbers, imgs=[item_sar], padding_modes=['zeros'], opt=self.opt)
+        item_rgb_warp, gt_tp, flow = self.affine(random_numbers=random_numbers, imgs=[item_rgb], padding_modes=['zeros'], opt=self.opt)
+        item_sar_warp, gt_tp, flow = self.affine(random_numbers=random_numbers, imgs=[item_sar], padding_modes=['zeros'], opt=self.opt)
 
         item_sar = item_sar.squeeze(0)
-        item_opt = item_opt.squeeze(0)
+        item_rgb = item_rgb.squeeze(0)
            
-        return item_opt, item_sar, item_opt_1, item_sar_1, gt_tp, flow
+        return item_rgb, item_sar, item_rgb_warp, item_sar_warp, gt_tp, flow
 
     def __len__(self):
-        return len(self.files_opt)
+        return len(self.files_rgb)
 
 
 class TestData(Dataset):
     def __init__(self, opt):
     
-        self.files_opt = sorted(glob.glob("%s/opt/*" % opt.test_data_path))
+        self.files_rgb = sorted(glob.glob("%s/rgb/*" % opt.test_data_path))
         self.files_sar = sorted(glob.glob("%s/sar/*" % opt.test_data_path))
 
         self.opt = opt
@@ -50,24 +50,23 @@ class TestData(Dataset):
 
     def __getitem__(self, index):
   
-        item_opt = imread(self.files_opt[index % len(self.files_opt)])
+        item_rgb = imread(self.files_rgb[index % len(self.files_rgb)])
         item_sar = imread(self.files_sar[index % len(self.files_sar)])
 
         random_numbers = torch.rand(8).numpy() * 2 - 1
-        item_opt_1, gt_tp, flow = self.affine(random_numbers=random_numbers, imgs=[item_opt], padding_modes=['zeros'], opt=self.opt)
-        item_sar_1, gt_tp, flow = self.affine(random_numbers=random_numbers, imgs=[item_sar], padding_modes=['zeros'], opt=self.opt)
+        item_rgb_warp, gt_tp, flow = self.affine(random_numbers=random_numbers, imgs=[item_rgb], padding_modes=['zeros'], opt=self.opt)
+        item_sar_warp, gt_tp, flow = self.affine(random_numbers=random_numbers, imgs=[item_sar], padding_modes=['zeros'], opt=self.opt)
 
         item_sar = item_sar.squeeze(0)
-        item_opt = item_opt.squeeze(0)
+        item_rgb = item_rgb.squeeze(0)
            
-        return item_opt, item_sar, item_opt_1, item_sar_1, gt_tp, flow
+        return item_rgb, item_sar, item_rgb_warp, item_sar_warp, gt_tp, flow
 
     def __len__(self):
-        return len(self.files_opt)
+        return len(self.files_rgb)
 
 
 
-    
 def imread(path):
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     im_ts = (KU.image_to_tensor(img)/255.).float()

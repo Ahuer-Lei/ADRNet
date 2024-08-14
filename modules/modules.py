@@ -580,8 +580,8 @@ class unet(nn.Module):
         v = self.un(v)
         v = self.process(v)
 
-        disp = {'sar2opt':u[0:int(b/2), ...], 'opt2sar':v[int(b/2):, ...]}
-        disp1 = {'sar2opt':u[int(b/2):, ...], 'opt2sar':v[0:int(b/2), ...]}
+        disp = {'sar2rgb':u[0:int(b/2), ...], 'rgb2sar':v[int(b/2):, ...]}
+        disp1 = {'sar2rgb':u[int(b/2):, ...], 'rgb2sar':v[0:int(b/2), ...]}
 
         return u,v,disp, disp1
 
