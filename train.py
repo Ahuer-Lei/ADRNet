@@ -27,8 +27,8 @@ class Train_and_test():
         self.test_loader = DataLoader(testdataset, batch_size=1, shuffle=False, num_workers=config.nThreads)
 
     def train_and_test(self):
-        lowest_sar_self_loss = 50
-        lowest_opt_self_loss = 50
+        lowest_re = 50
+  
  
         for ep in range(self.config.n_ep):
             self.model.train()
@@ -59,48 +59,43 @@ class Train_and_test():
         
             self.saver.write_img(ep=ep, model=self.model)
 
-   
-            self.model.eval()
+            if ep % 10 ==0 or ep > 250:
+                self.model.eval()
   
-            total_sarf_self_loss = 0
-            total_optf_self_loss = 0
-            total_s2o_disp_loss = 0
-            total_o2s_disp_loss = 0
+                total_re_loss = 0
+                total_cor_rmse_loss = 0
+                total_disp_rmse_loss = 0
+ 
+                start = time()
+                p_test_bar = tqdm(enumerate(self.test_loader), total=len(self.test_loader))
+                for it, [opt_, sar_, opt_warp_, sar_warp_, gt_tp_, gt_disp_, name] in p_test_bar:
+                    image_sar_ = sar_.cuda()    # [1,1,256,256]
+                    image_opt_ = opt_.cuda()
+                    image_sar_warp_ = sar_warp_.cuda()
+                    image_opt_warp_ = opt_warp_.cuda() 
+                    gt_tp_ = gt_tp_.squeeze(1).cuda()      # [1,2,3]
+                    gt_disp_ = gt_disp_.squeeze(1).cuda()  # [1,256,256,2]
+                    with torch.no_grad():
+                        image_sar_reg, cor_rmse, disp_rmse, sar_re = self.model.test_forward(image_opt_, image_sar_, image_opt_warp_, image_sar_warp_, gt_tp_, gt_disp_)
 
-            start = time()
-            p_test_bar = tqdm(enumerate(self.test_loader), total=len(self.test_loader))
-            for it, [opt_, sar_, opt_warp_, sar_warp_, gt_tp_, gt_disp_, name] in p_test_bar:
-                image_sar_ = sar_.cuda()    # [1,1,256,256]
-                image_opt_ = opt_.cuda()
-                image_sar_warp_ = sar_warp_.cuda()
-                image_opt_warp_ = opt_warp_.cuda() 
-                gt_tp_ = gt_tp_.squeeze(1).cuda()      # [1,2,3]
-                gt_disp_ = gt_disp_.squeeze(1).cuda()  # [1,256,256,2]
-                with torch.no_grad():
-                    image_sar_reg, image_opt_reg, sarf_self_loss, optf_self_loss, loss_s2o_disp, loss_o2s_disp = self.model.test_forward(image_opt_, image_sar_, image_opt_warp_, image_sar_warp_, gt_tp_, gt_disp_)
-
-
-                total_sarf_self_loss = total_sarf_self_loss + sarf_self_loss
-                total_optf_self_loss = total_optf_self_loss + optf_self_loss
-                total_s2o_disp_loss = total_s2o_disp_loss + loss_s2o_disp
-                total_o2s_disp_loss = total_o2s_disp_loss + loss_o2s_disp
+                    total_re_loss = total_re_loss + sar_re
+                    total_cor_rmse_loss = total_cor_rmse_loss + cor_rmse
+                    total_disp_rmse_loss = total_disp_rmse_loss + disp_rmse
 
                 end = time()
                 p_test_bar.set_description(f'testing  ep: %d | time : {str(round(end - start, 2))}' % ep)
          
 
-                avg_s2o_disp = (total_s2o_disp_loss / len(self.test_loader)).sqrt()
-                avg_o2s_disp = (total_o2s_disp_loss / len(self.test_loader)).sqrt()
-                avg_sarf_self = total_sarf_self_loss / len(self.test_loader)
-                avg_optf_self = total_optf_self_loss / len(self.test_loader)
+                avg_disp = (total_disp_rmse_loss / len(self.test_loader)).sqrt()
+                avg_cor = (total_cor_rmse_loss / len(self.test_loader))
+                avg_re = total_re_loss / len(self.test_loader)
+              
    
-                test_loss_record(self.config, ep=ep, sarf_self=avg_sarf_self, optf_self=avg_optf_self, s2o_disp_loss=avg_s2o_disp, o2s_disp_loss=avg_o2s_disp)
+                test_loss_record(self.config, ep=ep, re=avg_re, cor_rmse=avg_cor, disp_rmse=avg_disp)
 
-                if lowest_sar_self_loss > avg_sarf_self and lowest_opt_self_loss > avg_optf_self:
-                    lowest_sar_self_loss = avg_sarf_self
-                    lowest_opt_self_loss = avg_optf_self
-
-                    result= {'sarf_self':str(avg_sarf_self.cpu().numpy()), 'optf_self':str(avg_optf_self.cpu().numpy()),'s2o_disp_error':str(avg_s2o_disp.cpu().numpy()), 'o2s_disp_error':str(avg_o2s_disp.cpu().numpy()), 'detail':'acm optsar，动态lr', 'loss':'10_1_1'}
+                if lowest_re > avg_re:
+ 
+                    result= {'re':str(avg_re.cpu().numpy()), 'cor_rmse':str(avg_cor.cpu().numpy()),'avg_disp':str(avg_disp.cpu().numpy())}
                     self.saver.save_model(self.config, ep=ep, model=self.model, mode='ing')
 
             if self.config.n_ep_decay > -1:     # 从那个epoch开始减少学习率
@@ -120,10 +115,10 @@ def train_loss_record(config, ep, tp_loss, disp_loss, lr):
         f.write('No.%d Epoch: tp_loss:%.6f | disp_loss:%.6f | lr:%.6f \n' % (ep, tp_loss, disp_loss, lr))
 
 
-def test_loss_record(config, ep, sarf_self, optf_self, s2o_disp_loss, o2s_disp_loss):
+def test_loss_record(config, ep, re, cor_rmse, disp_rmse):
     os.makedirs(config.test_logs_dir, exist_ok=True)
     log_path = os.path.join(config.test_logs_dir, 'test_log.txt')
     with open(log_path, 'a') as f:
-        f.write('No.%d Epoch: sarf_self:%.4f | optf_self:%.4f | s2o_disp_loss:%.4f | o2s_disp_loss:%.4f\n' % (ep, sarf_self, optf_self, s2o_disp_loss, o2s_disp_loss))
+        f.write('No.%d Epoch: re:%.4f | cor:%.4f | disp:%.4f \n' % (ep, re, cor_rmse, disp_rmse))
 
 

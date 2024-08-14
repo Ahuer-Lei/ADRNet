@@ -7,7 +7,7 @@ import torch.nn as nn
 from datetime import datetime
 
 
-address_dict={ "result_save_path":'/data/zcl/work2/ADRNet_ACM/acmmm.xlsx'
+address_dict={ "result_save_path":'./result.xlsx'
 
 }
 

@@ -91,9 +91,9 @@ class HR(nn.Module):
         self.UN_sch = get_scheduler(self.UN_opt, opts, now_ep)
 
 
-    def test_forward(self, opt, sar, opt_warp, sar_warp):
-        # opt_gt_reg = STN(opt_warp, gt_tp)
-        # sar_gt_reg = STN(sar_warp, gt_tp)
+    def test_forward(self, opt, sar, opt_warp, sar_warp, gt_tp, gt_disp):
+  
+        sar_gt_reg = STN(sar_warp, gt_tp)
 
         b, c, h, w = sar.shape
         sar_stack = torch.cat([sar_warp, sar])
@@ -119,22 +119,16 @@ class HR(nn.Module):
 
         image_sar_reg, image_opt_reg = torch.split(img_reg, b, dim=0)
 
-        # mask_sar_reg, num_sar = generate_mask(image_sar_reg*255)
-        # mask_sar_areg, anum_sar = generate_mask(sar_reg_aff*255)
 
-        # loss_pts = four_point_RMSE_loss(sw2o, gt_tp)  # 每个角的位移差
+        loss_pts = four_point_RMSE_loss(sw2o, gt_tp)  # 每个角的位移差
 
-        # loss_s2o_disp = torch.sum(abs(pre_disp1-gt_disp).pow(2))/(h*w) # 每个像素的位移差
+        loss_s2o_disp = torch.sum(abs(pre_disp1-gt_disp).pow(2))/(h*w)
         # loss_o2s_disp = torch.sum(abs(pre_disp2-gt_disp).pow(2))/(h*w)
 
-        # sarf_self_loss = self.l1_loss(sar_gt_reg*255, image_sar_reg*255)
+        sarf_self_loss = self.l1_loss(sar_gt_reg*255, image_sar_reg*255)
         # optf_self_loss = self.l1_loss(opt_gt_reg*255, image_opt_reg*255)
 
-
-        # sarf_self_loss = torch.sum(abs(sar*mask_sar_reg*255-image_sar_reg*255)) / num_sar        
-        # sara_self_loss = torch.sum(abs(sar*mask_sar_areg*255-sar_reg_aff*255)) / anum_sar
-
-        return image_sar_reg,  flow[0:1,...]
+        return image_sar_reg, loss_pts, loss_s2o_disp, sarf_self_loss
 
 
     def forward(self, vi_tensor, ir_tensor, vi_warp_tensor, ir_warp_tensor):
