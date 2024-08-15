@@ -242,7 +242,7 @@ class ADRNet(nn.Module):
 
     def backward_RF(self):
         b, c, h, w = self.image_rgb.shape
-    
+        grid = KU.create_meshgrid(h,w).cuda()
         idx3 = torch.Tensor([[[0,0,1]]]).cuda().repeat(b, 1, 1)
         unit = torch.Tensor([[[1,0,0],[0,1,0],[0,0,1]]]).cuda().repeat(b, 1, 1)
 
@@ -272,8 +272,8 @@ class ADRNet(nn.Module):
     
         dc2 = self.sym_loss(self.disp['sar2rgb'].permute(0,2,3,1), self.disp1['rgb2sar'].permute(0,2,3,1)) + self.sym_loss(self.disp['rgb2sar'].permute(0,2,3,1), self.disp1['sar2rgb'].permute(0,2,3,1))
  
-        loss_disp1 = (torch.sum(abs(self.pre_disp_sw2r - self.gt_disp).pow(2))/(h*w)).sqrt()
-        loss_disp2 = (torch.sum(abs(self.pre_disp_rw2s - self.gt_disp).pow(2))/(h*w)).sqrt()
+        loss_disp1 = (torch.sum(abs(self.pre_disp_sw2r - (self.gt_disp-grid)).pow(2))/(h*w)).sqrt()
+        loss_disp2 = (torch.sum(abs(self.pre_disp_rw2s - (self.gt_disp-grid)).pow(2))/(h*w)).sqrt()
         loss_disp = loss_disp1 + loss_disp2
 
         loss_mi2 = self.mi_loss(self.image_rgb*self.mask_true, self.image_rgb_reg) + self.mi_loss(self.image_sar*self.mask_true, self.image_sar_reg) 
