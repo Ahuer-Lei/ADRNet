@@ -91,7 +91,7 @@ class ADRNet(nn.Module):
 
 
     def test_forward(self, rgb, sar, rgb_warp, sar_warp, gt_tp, gt_disp):
-  
+        grid = KU.create_meshgrid(h,w).cuda()
         sar_gt_reg = STN(sar_warp, gt_tp)
 
         b, c, h, w = sar.shape
@@ -121,7 +121,7 @@ class ADRNet(nn.Module):
 
         loss_pts = four_point_RMSE_loss(sw2r, gt_tp)  # 每个角的位移差
 
-        loss_disp = torch.sum(abs(pre_disp1-gt_disp).pow(2))/(h*w)
+        loss_disp = torch.sum(abs(pre_disp1-(gt_disp-grid)).pow(2))/(h*w)
         # loss_o2s_disp = torch.sum(abs(pre_disp2-gt_disp).pow(2))/(h*w)
 
         sarf_self_loss = self.l1_loss(sar_gt_reg*255, image_sar_reg*255)
