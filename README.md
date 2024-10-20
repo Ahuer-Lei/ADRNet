@@ -17,8 +17,8 @@ python main.py
 This project is released under the Apache 2.0 license.
 
 ## Contact
-- ahdxyjszcl@163.com
-the dataset can be download at  - https: //github.com/mmic-lcl/Datasets-and-benchmark-code
+- ahdxyjszcl@163.com 
+- the dataset can be download at (https: //github.com/mmic-lcl/Datasets-and-benchmark-code)
 
 ## Citation
 If you find our paper or code useful for your research, please cite:
